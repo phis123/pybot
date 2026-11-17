@@ -1,0 +1,72 @@
+# Build pybot.exe on Windows with PyInstaller.
+#
+# 本文件放在 fork 仓库根目录的 .github/workflows/ 下；构建时用到的布局：
+#     pybot-src/   (or clone it here, see the "Checkout pybot" step)
+#     exe/pybot.spec
+#
+# Triggers: manual dispatch, or a v* tag. Produces a one-dir bundle
+# (dist/pybot/pybot.exe + _internal/) uploaded as an Actions artifact.
+# Wrap it with Inno Setup afterwards if you want a setup.exe installer.
+#
+# Pinned pybot commit: 7d63c7fbebb44c7e466e5c8b5c1f341ab767929e (2026-11-18 shallow clone).
+# The APK side (Flet chat shell) is a separate job, not covered here.
+
+name: Build pybot EXE (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout pybot source (pinned commit)
+        uses: actions/checkout@v4
+        with:
+          repository: huggingface/pybot
+          ref: 7d63c7fbebb44c7e466e5c8b5c1f341ab767929e
+          path: pybot-src
+
+      - name: Checkout build files (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: build
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install "pyinstaller>=6.0"
+
+      - name: Build pybot.exe (one-dir, console)
+        working-directory: build/exe
+        run: |
+          # pybot.spec expects ../pybot-src next to exe/; the two
+          # checkouts above are siblings under the workspace root,
+          # so point the spec at the right place first.
+          Copy-Item -Recurse -Force "$env:GITHUB_WORKSPACE/pybot-src" "$env:GITHUB_WORKSPACE/build/pybot-src"
+          pyinstaller pybot.spec --noconfirm --distpath dist --workpath build-tmp
+
+      - name: Smoke test
+        working-directory: build/exe
+        shell: pwsh
+        run: |
+          $sw = [System.Diagnostics.Stopwatch]::StartNew()
+          .\dist\pybot\pybot.exe -p "hi, i'm Sam" -v
+          $sw.Stop()
+          Write-Host "smoke test took $($sw.Elapsed.TotalSeconds) s"
+
+      - name: Upload pybot.exe bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: pybot-windows
+          path: build/exe/dist/pybot
+          retention-days: 30

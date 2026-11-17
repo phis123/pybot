@@ -1,0 +1,44 @@
+# PyBot Android（Flet 壳）工程配置。
+#
+# 打包入口是 src/main.py；src/bot/ 是上游 huggingface/pybot 的原样拷贝，
+# 由 sync_bot.sh 从 ../pybot-src 同步（不要手改 src/bot/ 里的文件）。
+# 注意 flet build 只打包 [tool.flet.app] path 那个目录（这里是 src/），
+# 所以 bot/ 必须放在 src/ 里面，放在工程根目录是打不进 APK 的。
+#
+# 本地跑（需先 pip install "flet==1.0.4"）：
+#   cd apk && flet run
+# 云端打 APK：见 .github/workflows/build-apk.yml。
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pybot-android"
+version = "0.1.0"
+description = "PyBot: a chatbot written in plain Python — Android app (Flet shell)"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "flet==1.0.4",
+]
+
+[project.urls]
+Repository = "https://github.com/huggingface/pybot"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.flet]
+# flet build apk / build windows 用的应用信息。
+# org/product 决定 Android 包名（org + product 小写化，如 com.phis123.pybot）。
+org = "com.phis123"
+product = "PyBot"
+company = "phis123"
+description = "PyBot: a chatbot written in plain Python. No weights, no training, just rules."
+copyright = "Copyright (c) 2026 phis123"
+
+[tool.flet.app]
+# 打包入口 main.py 在 src/ 下；flet build 只把这个目录打进 app.zip，
+# 所以 bot/ 也必须放在 src/ 里（见 README.md）。
+path = "src"
